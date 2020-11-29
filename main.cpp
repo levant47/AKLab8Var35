@@ -8,42 +8,44 @@ void first_task()
     int32_t argument = 4;
     __asm
     {
-        mov ebx, 4
-        mov ecx, 0
-        loop_start:
+        mov ebx, 4 ; в ebx будет храниться значене аргумента функции X, изменяющееся от 4 с шагом 3
+        mov ecx, 0 ; в ecx будет храниться счетчик цикла, для контроля того что мы посчитали только 6 значений функции
+
+        loop_start: ; начало цикла
         cmp ecx, 6
-        je loop_end
+        je loop_end ; закончить цикл, если уже было совершено 6 итераций
 
-        ; second parentheses
-        mov eax, ebx
-        mul eax
+        ; считаем вторую скобку = (3 * X^2 + 20)
+        mov eax, ebx ; загружаем текущее значение аргумента X
+        mul eax ; вычисляем X ^ 2
         mov edx, 3
-        mul edx
-        add eax, 20
-        mov edi, eax
+        mul edx ;  вычисляем 3 * X^2
+        add eax, 20 ; вычисляем 3 * X^2 + 20
+        mov edi, eax ; сохраняем значение второй скобки в edi для использования в финальной операции деления
 
-        ; first parentheses
-        mov eax, ebx
+        ; считаем первую скобку = (2500*X - 8)
+        mov eax, ebx ; загружаем текущее значение аргумента X
         mov edx, 2500
-        mul edx
-        sub eax, 8
+        mul edx ; вычисляем 2500 * X
+        sub eax, 8 ; вычисляем 2500*X - 8
 
-        ; final divsion
-        mov edx, 0
-        idiv edi
+        ; финальная операция деления
+        idiv edi ; делим значение первой скобки на значение второй
         shr edi, 1
-        cmp edi, edx
-        adc eax, 0
-        mov DWORD PTR [result + ecx * 4], eax
+        cmp edi, edx ; сравниваем остаток от деления с половиной делителя
+        adc eax, 0 ; в зависимости от результата сравнения округляем полученное значение к ближайшему целочисленному
 
-        add ebx, 3
+        mov DWORD PTR [result + ecx * 4], eax ; сохраняем результат в массив под соответсвующим индексом
+
+        add ebx, 3 ; добавляем шаг аргумента к текущему значению X
         inc ecx
-        jmp loop_start
+        jmp loop_start ; увеличиваем значение счетчика цикла на 1 и переходим в начало цикла
+
         loop_end:
     } 
     for (uint32_t i = 0; i < result_size; i++)
     {
-        printf("%u: %d\n", i, result[i]);
+        printf("%u: %d\n", i + 1, result[i]);
     }
 }
 
@@ -52,28 +54,31 @@ void second_task()
     int32_t result;
     __asm
     {
-        mov ecx, 0
+        mov ecx, 0 ; в ecx будет храниться значение аргумента X
         loop_start:
-        inc ecx
 
-        ; first minome
-        mov eax, ecx
-        mul eax
+        ; считаем значение первого одночлена = 7 * X^2
+        mov eax, ecx ; загружаем текущее значение аргумента X
+        mul eax ; вычисляем X ^ 2
         mov edx, 7
-        mul edx
-        mov edi, eax
+        mul edx ; вычисляем 7 * X^2
+        mov edi, eax ; сохраняем значение первого одночлена в edi для использования в финальной операции сложения
 
-        ; second and third minomes
-        mov eax, ecx
+        ; вычисляем значение суммы второго и третьего одночлена = 25*X - 27
+        mov eax, ecx ; загружаем текущее значение аргумента X
         mov edx, 25
-        mul edx
-        sub eax, 27
+        mul edx ; вычисляем 25 * X
+        sub eax, 27 ; вычисляем 25*X - 27
 
-        add eax, edi
+        add eax, edi ; вычисляем сумму всего трехчлена
 
         cmp eax, 3000
-        jle loop_start
-        mov [result], ecx
+        jg loop_end ; если полученное значение больше 3000 заканчиваем цикл
+        inc ecx
+        jmp loop_start ; в противном случае увеличиваем аргумент X на 1 и продолжаем цикл
+
+        loop_end:
+        mov [result], ecx ; в конце записываем текущее значение агрумента X в память
     } 
     printf("%d\n", result);
 }
@@ -81,37 +86,46 @@ void second_task()
 void third_task()
 {
     int32_t result;
-    int32_t source[10]{ 0, 0b1, 0b10, 0b11, 0b100, 0b101, 0b110, 0b111, 0b1000, 0b1001 };
+    int32_t source[10] = { 0, 0b1, 0b10, 0b11, 0b100, 0b101, 0b110, 0b111, 0b1000, 0b1001 };
     __asm
     {
-        mov eax, 0
-        lea ebx, source
-        mov ecx, 0
-        loop_start:
+        mov eax, 0 ; в eax будет храниться колличество единичных битов
+        lea ebx, source ; в ebx будет храниться адрес массива, который мы анализируем
+        mov ecx, 0 ; в ecx будет храниться индекс текущего элемента массива
+        loop_start: ; начало основного цикла, который суммирует количество единичных битов в каждом элементе массива
 
-        mov edi, [ebx + ecx * 4]
-        inner_loop_start:
+        mov edi, [ebx + ecx * 4] ; загружаем текущий элемент массива
+        inner_loop_start: ; начало внутреннего цикла, который считает количество единичных битов в текущем элементе массива
         cmp edi, 0
-        je inner_loop_end
+        je inner_loop_end ; если текущий элемент массива равен 0, то мы выходим из внутреннего цикла
+
         mov esi, edi
-        and esi, 1
-        add eax, esi
-        shr edi, 1
-        jmp inner_loop_start
+        and esi, 1 ; с помощью логического И вычисляем значение самого нижнего бита текущего элемента массива = 0 или 1
+        add eax, esi ; добавляем полученное значение 0 или 1 к счетчику единичных битов
+        shr edi, 1 ; сдвигаем значение текущего элемента массива влево на 1 бит
+        jmp inner_loop_start ; продолжаем цикл
         inner_loop_end:
 
-        inc ecx
+        inc ecx ; увеличиваем индекс текущего элемента массива на 1
         cmp ecx, 10
-        jne loop_start
-        mov DWORD PTR [result], eax
+        jne loop_start ; заканчиваем цикл, если мы рассмотрели все 10 элементов массива
+        mov DWORD PTR [result], eax ; сохраняем результат в память
     } 
     printf("%d\n", result);
 }
 
 int main()
 {
+    printf("1st:\n");
     first_task();
+    printf("\n");
+
+    printf("2nd:\n");
     second_task();
+    printf("\n");
+
+    printf("3rd:\n");
     third_task();
+    printf("\n");
 }
 
